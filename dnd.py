@@ -1,4 +1,6 @@
 from langchain.pydantic_v1 import BaseModel, Field
+import json
+
 
 character_system_msg = """You are a dungeon master for a game of dungeons and dragons.
 
@@ -12,6 +14,23 @@ The relevant information is:
 - Character's alignment
 
 Once you have gathered enough information, write that info to `notebook`."""
+
+
+gameplay_system_msg = """You are a dungeon master for a game of dungeons and dragons.
+
+You are leading a quest of one person. Their character description is here:
+
+{character}
+
+A summary of the game state is here:
+
+{state}"""
+
+
+class StateNotebook(BaseModel):
+    """Notebook to write information to"""
+
+    state: str = Field(description="Information about the current game state")
 
 
 class CharacterNotebook(BaseModel):
