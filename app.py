@@ -1,5 +1,4 @@
 import streamlit as st
-from langchain.chains import LLMChain
 from langchain.chat_models import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
 from langchain.memory.chat_message_histories import StreamlitChatMessageHistory
@@ -34,9 +33,8 @@ if prompt := st.chat_input():
         st.stop()
 
     llm = ChatOpenAI(api_key=st.session_state.openai_api_key)
-    character_model = llm.bind(
-        functions=[convert_pydantic_to_openai_function(CharacterNotebook)],
-    )
+    converted_openai_function = convert_pydantic_to_openai_function(CharacterNotebook)
+    character_model = llm.bind(functions=[converted_openai_function])
     prompt_chat = ChatPromptTemplate.from_messages(
         [
             ("system", character_system_msg),
@@ -44,13 +42,11 @@ if prompt := st.chat_input():
             ("human", "{prompt}"),
         ]
     )
-    llm_chain = LLMChain(
-        llm=character_model,
-        memory=memory,
-        prompt=prompt_chat,
-    )
+
+    llm_chain = prompt_chat | character_model
 
     st.chat_message("human").write(prompt)
-    response = llm_chain({"prompt": prompt})
+    response = llm_chain.invoke({"prompt": prompt, "history": memory.load_memory_variables({})["history"]})
     st.write("response", response)
-    st.chat_message("ai").write(response["text"])
+    memory.save_context({"input": prompt}, {"output": response.content})
+    st.chat_message("ai").write(response.content)
