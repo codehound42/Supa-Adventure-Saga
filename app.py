@@ -12,6 +12,9 @@ from langchain_core.output_parsers import StrOutputParser
 from dnd import CharacterNotebook, character_system_msg, gameplay_system_msg, StateNotebook
 
 
+st.session_state["openai_api_key"] = st.secrets["OPENAI_API_KEY"]
+
+
 def _maybe_update_character(message):
     st.write(message)
     args = json.loads(message.additional_kwargs["function_call"]["arguments"])
@@ -151,21 +154,17 @@ msgs = StreamlitChatMessageHistory(key="messages")
 
 memory = ConversationBufferMemory(memory_key="history", chat_memory=msgs, return_messages=True)
 
-with st.sidebar:
-    openai_api_key = st.text_input(
-        "OpenAI API Key",
-        key="openai_api_key",
-        type="password",
-        value=st.secrets["OPENAI_API_KEY"],
-    )
-
-st.title("💬 Chatbot")
-
 if "state" not in st.session_state:
     st.session_state[
         "state"
     ] = "In the small village of Eldenwood, you find yourself in the cozy Drunken Dragon Inn. A mysterious figure offers you a quest to investigate the haunted ruins of Graystone Castle, believed to be the source of recent villager disappearances. With a map and promise of gold, you set out to uncover the secrets lurking in the shadowy depths of the castle."
     st.session_state["completed"] = False
+    st.session_state["name"] = ""
+    st.session_state["race"] = ""
+    st.session_state["class_"] = ""
+    st.session_state["alignment"] = ""
+
+st.title("💬 Chatbot")
 
 if len(msgs.messages) == 0:
     msgs.add_ai_message("Hello! Are you ready to create your character for the game of Dungeons and Dragons?")
@@ -174,7 +173,7 @@ for msg in msgs.messages:
     st.chat_message(msg.type).write(msg.content)
 
 if prompt := st.chat_input():
-    if not openai_api_key:
+    if not st.session_state["openai_api_key"]:
         st.info("Please add your OpenAI API key to continue.")
         st.stop()
 
@@ -219,3 +218,11 @@ if prompt := st.chat_input():
     st.chat_message("ai").write(response)
 
     st.write(st.session_state)
+
+with st.sidebar:
+    openai_api_key = st.text_input("OpenAI API Key", key="openai_api_key", type="password")
+    st.title("📝 Character Sheet")
+    st.text(f"Name: {st.session_state.name}")
+    st.text(f"Race: {st.session_state.race}")
+    st.text(f"Class: {st.session_state.class_}")
+    st.text(f"Alignment: {st.session_state.alignment}")
