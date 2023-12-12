@@ -9,14 +9,18 @@ from langchain.utils.openai_functions import convert_pydantic_to_openai_function
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 from langchain_core.output_parsers import StrOutputParser
 
-from dnd import CharacterNotebook, character_system_msg, gameplay_system_msg, StateNotebook
+from dnd import (
+    CharacterNotebook,
+    character_system_msg,
+    gameplay_system_msg,
+    StateNotebook,
+)
 
 
 st.session_state["openai_api_key"] = st.secrets["OPENAI_API_KEY"]
 
 
 def _maybe_update_character(message):
-    st.write(message)
     args = json.loads(message.additional_kwargs["function_call"]["arguments"])
     st.session_state["name"] = args["name"]
     st.session_state["race"] = args["race"]
@@ -36,6 +40,7 @@ def _maybe_update_state(message: AnyMessage):
     if "function_call" in message.additional_kwargs:
         args = json.loads(message.additional_kwargs["function_call"]["arguments"])
         st.session_state["state"] = args["state"]
+        st.session_state["is_quest_completed"] = args["is_quest_completed"]
 
 
 def init_character_chain():
@@ -65,7 +70,7 @@ def init_state_chain():
             MessagesPlaceholder(variable_name="history"),
             (
                 "human",
-                "If any updates to the game state are neccessary, please update the state notebook. If none are, just say no.",
+                "If any updates to the game state are neccessary or if the current quest has been completed, please update the state notebook. If none are, just say no.",
             ),
         ]
     )
@@ -156,8 +161,11 @@ memory = ConversationBufferMemory(memory_key="history", chat_memory=msgs, return
 
 if "state" not in st.session_state:
     st.session_state[
-        "state"
+        "story"
     ] = "In the small village of Eldenwood, you find yourself in the cozy Drunken Dragon Inn. A mysterious figure offers you a quest to investigate the haunted ruins of Graystone Castle, believed to be the source of recent villager disappearances. With a map and promise of gold, you set out to uncover the secrets lurking in the shadowy depths of the castle."
+    st.session_state["state"] = ""
+    st.session_state["quest"] = "Uncover the secrets lurking in the shadowy depths of the castle."
+    st.session_state["is_quest_completed"] = False
     st.session_state["completed"] = False
     st.session_state["name"] = ""
     st.session_state["race"] = ""
@@ -197,6 +205,8 @@ if prompt := st.chat_input():
         response = game_chain.invoke(
             {
                 "prompt": prompt,
+                "story": st.session_state["story"],
+                "quest": st.session_state["quest"],
                 "state": st.session_state["state"],
                 "character": st.session_state["player_info"],
                 "history": memory.load_memory_variables({})["history"][
@@ -207,6 +217,8 @@ if prompt := st.chat_input():
         memory.save_context({"input": prompt}, {"output": response})
         state_chain.invoke(
             {
+                "story": st.session_state["story"],
+                "quest": st.session_state["quest"],
                 "state": st.session_state["state"],
                 "character": st.session_state["player_info"],
                 "history": memory.load_memory_variables({})["history"][
@@ -217,7 +229,6 @@ if prompt := st.chat_input():
 
     st.chat_message("ai").write(response)
 
-    st.write(st.session_state)
 
 with st.sidebar:
     openai_api_key = st.text_input("OpenAI API Key", key="openai_api_key", type="password")
@@ -226,3 +237,9 @@ with st.sidebar:
     st.text(f"Race: {st.session_state.race}")
     st.text(f"Class: {st.session_state.class_}")
     st.text(f"Alignment: {st.session_state.alignment}")
+    st.title("Story")
+    st.text(st.session_state.story)
+    st.title("Quest")
+    st.text(st.session_state.quest)
+    st.title("State")
+    st.text(st.session_state.state)

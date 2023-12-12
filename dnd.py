@@ -13,11 +13,32 @@ The relevant information is:
 - Character's alignment"""
 
 
+quest_system_msg = """You are a dungeon master for a game of dungeons and dragons.
+
+Your job is evaluate whether the current quest has been completed based on the current state and past history.
+
+The current quest is:
+
+{quest}
+
+The current state is:
+
+{state}"""
+
+
 gameplay_system_msg = """You are a dungeon master for a game of dungeons and dragons.
 
 You are leading a quest of one person. Their character description is here:
 
 {character}
+
+The story is:
+
+{story}
+
+The current quest is:
+
+{quest}
 
 A summary of the game state is here:
 
@@ -28,6 +49,7 @@ class StateNotebook(BaseModel):
     """Notebook to write information to"""
 
     state: str = Field(description="Information about the current game state")
+    is_quest_completed: bool = Field(description="Whether the quest has been completed")
 
 
 class CharacterNotebook(BaseModel):
