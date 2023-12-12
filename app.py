@@ -13,12 +13,20 @@ from dnd import CharacterNotebook, character_system_msg, gameplay_system_msg, St
 
 
 def _maybe_update_character(message):
-    if "function_call" in message.additional_kwargs:
-        args = json.loads(message.additional_kwargs["function_call"]["arguments"])
-        st.session_state["player_info"] = args["player_info"]
+    st.write(message)
+    args = json.loads(message.additional_kwargs["function_call"]["arguments"])
+    st.session_state["name"] = args["name"]
+    st.session_state["race"] = args["race"]
+    st.session_state["class_"] = args["class_"]
+    st.session_state["alignment"] = args["alignment"]
+    st.session_state["completed"] = args["completed"]
+
+    if st.session_state["completed"]:
+        st.session_state[
+            "player_info"
+        ] = f"Name: {st.session_state['name']}\nRace: {st.session_state['race']}\nClass: {st.session_state['class_']}\nAlignment: {st.session_state['alignment']}"
+
         st.session_state["player_creation_end_idx"] = len(msgs.messages)
-        return "Great! Let's get started with the quest."
-    return message.content
 
 
 def _maybe_update_state(message: AnyMessage):
@@ -35,7 +43,10 @@ def init_character_chain():
         [
             ("system", character_system_msg),
             MessagesPlaceholder(variable_name="history"),
-            ("human", "{prompt}"),
+            (
+                "human",
+                "If any updates to the character state are neccessary, please update the character notebook. If none are, just say no.",
+            ),
         ]
     )
 
@@ -45,7 +56,6 @@ def init_character_chain():
 
 def init_state_chain():
     llm = ChatOpenAI(api_key=st.session_state.openai_api_key)
-
     state_prompt = ChatPromptTemplate.from_messages(
         [
             ("system", gameplay_system_msg),
@@ -65,6 +75,26 @@ def init_state_chain():
     state_chain = (state_prompt | state_model | _maybe_update_state).with_config(run_name="StateChain")
 
     return state_chain
+
+
+def init_character_response_chain():
+    llm = ChatOpenAI(api_key=st.session_state.openai_api_key)
+    response_prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", character_system_msg),
+            MessagesPlaceholder(variable_name="history"),
+            (
+                "human",
+                "{prompt}",
+            ),
+        ]
+    )
+
+    character_response_chain = (response_prompt | llm | StrOutputParser()).with_config(
+        run_name="CharacterResponseChain"
+    )
+
+    return character_response_chain
 
 
 def init_game_chain():
@@ -113,7 +143,8 @@ Alignment: Neutral"""
 
 
 if "messages" not in st.session_state:
-    init_sample_character()
+    pass
+    # init_sample_character()
 
 
 msgs = StreamlitChatMessageHistory(key="messages")
@@ -134,6 +165,7 @@ if "state" not in st.session_state:
     st.session_state[
         "state"
     ] = "In the small village of Eldenwood, you find yourself in the cozy Drunken Dragon Inn. A mysterious figure offers you a quest to investigate the haunted ruins of Graystone Castle, believed to be the source of recent villager disappearances. With a map and promise of gold, you set out to uncover the secrets lurking in the shadowy depths of the castle."
+    st.session_state["completed"] = False
 
 if len(msgs.messages) == 0:
     msgs.add_ai_message("Hello! Are you ready to create your character for the game of Dungeons and Dragons?")
@@ -149,13 +181,18 @@ if prompt := st.chat_input():
     character_chain = init_character_chain()
     state_chain = init_state_chain()
     game_chain = init_game_chain()
+    character_response_chain = init_character_response_chain()
 
     st.chat_message("human").write(prompt)
 
-    if not "player_info" in st.session_state:
+    if not st.session_state["completed"]:
         st.session_state["step"] = "character"
-        response = character_chain.invoke({"prompt": prompt, "history": memory.load_memory_variables({})["history"]})
+        response = character_response_chain.invoke(
+            {"prompt": prompt, "history": memory.load_memory_variables({})["history"]}
+        )
         memory.save_context({"input": prompt}, {"output": response})
+
+        character_chain.invoke({"history": memory.load_memory_variables({})["history"]})
     else:
         st.session_state["step"] = "game"
         response = game_chain.invoke(

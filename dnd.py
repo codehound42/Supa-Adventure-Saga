@@ -1,5 +1,4 @@
 from langchain.pydantic_v1 import BaseModel, Field
-import json
 
 
 character_system_msg = """You are a dungeon master for a game of dungeons and dragons.
@@ -11,9 +10,7 @@ The relevant information is:
 - Character's name
 - Character's race (or species)
 - Character's class
-- Character's alignment
-
-Once you have gathered enough information, write that info to `notebook`."""
+- Character's alignment"""
 
 
 gameplay_system_msg = """You are a dungeon master for a game of dungeons and dragons.
@@ -34,6 +31,10 @@ class StateNotebook(BaseModel):
 
 
 class CharacterNotebook(BaseModel):
-    """Notebook to write information to"""
+    """Notebook to update with character information every time you get new information about the character."""
 
-    player_info: str = Field(description="Information about a player that you will remember over time")
+    name: str = Field(description="Information about the name of the player that you will remember over time")
+    race: str = Field(description="Information about the race of the player that you will remember over time")
+    class_: str = Field(description="Information about the class of the player that you will remember over time ")
+    alignment: str = Field(description="Information about the alignment of the player that you will remember over time")
+    completed: bool = Field(description="Whether the character creation is completed")
