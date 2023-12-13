@@ -172,7 +172,8 @@ if "state" not in st.session_state:
     st.session_state["class_"] = ""
     st.session_state["alignment"] = ""
 
-st.title("💬 Chatbot")
+st.title("Supa Adventure Saga")
+st.image("front_image.png")
 
 if len(msgs.messages) == 0:
     msgs.add_ai_message("Hello! Are you ready to create your character for the game of Dungeons and Dragons?")
@@ -232,14 +233,14 @@ if prompt := st.chat_input():
 
 with st.sidebar:
     openai_api_key = st.text_input("OpenAI API Key", key="openai_api_key", type="password")
-    st.title("📝 Character Sheet")
+    st.header("📝 Character Sheet")
     st.text(f"Name: {st.session_state.name}")
     st.text(f"Race: {st.session_state.race}")
     st.text(f"Class: {st.session_state.class_}")
     st.text(f"Alignment: {st.session_state.alignment}")
-    st.title("Story")
-    st.text(st.session_state.story)
-    st.title("Quest")
-    st.text(st.session_state.quest)
-    st.title("State")
-    st.text(st.session_state.state)
+    st.header("Story")
+    st.write(st.session_state.story)
+    st.header("Quest")
+    st.write(st.session_state.quest)
+    st.header("State")
+    st.write(st.session_state.state)
