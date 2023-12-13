@@ -2,19 +2,14 @@ import json
 
 import streamlit as st
 from langchain.chat_models import ChatOpenAI
-from langchain.memory import ConversationBufferMemory
+from langchain.memory import ConversationBufferWindowMemory, VectorStoreRetrieverMemory
 from langchain.memory.chat_message_histories import StreamlitChatMessageHistory
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.utils.openai_functions import convert_pydantic_to_openai_function
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 from langchain_core.output_parsers import StrOutputParser
 
-from dnd import (
-    CharacterNotebook,
-    character_system_msg,
-    gameplay_system_msg,
-    StateNotebook,
-)
+from dnd import CharacterNotebook, character_system_msg, gameplay_system_msg, StateNotebook, get_vectorstore
 
 
 st.session_state["openai_api_key"] = st.secrets["OPENAI_API_KEY"]
@@ -141,23 +136,26 @@ def init_sample_character():
         ),
     ]
     st.session_state["player_creation_end_idx"] = 11
-    st.session_state["step"] = "character"
-    st.session_state[
-        "player_info"
-    ] = """Name: Tom
-Race: Elf
-Class: Cleric
-Alignment: Neutral"""
+    st.session_state["step"] = "game"
+    st.session_state["name"] = "Tom"
+    st.session_state["race"] = "Elf"
+    st.session_state["class_"] = "Cleric"
+    st.session_state["alignment"] = "Neutral"
+    st.session_state["completed"] = False
 
 
 if "messages" not in st.session_state:
-    pass
-    # init_sample_character()
+    init_sample_character()
 
 
 msgs = StreamlitChatMessageHistory(key="messages")
 
-memory = ConversationBufferMemory(memory_key="history", chat_memory=msgs, return_messages=True)
+memory_conversation = ConversationBufferWindowMemory(memory_key="history", chat_memory=msgs, return_messages=True, k=5)
+
+vectorstore = get_vectorstore()
+retriever = vectorstore.as_retriever()
+memory_context = VectorStoreRetrieverMemory(retriever=retriever)
+
 
 if "state" not in st.session_state:
     st.session_state[
@@ -196,13 +194,24 @@ if prompt := st.chat_input():
     if not st.session_state["completed"]:
         st.session_state["step"] = "character"
         response = character_response_chain.invoke(
-            {"prompt": prompt, "history": memory.load_memory_variables({})["history"]}
+            {"prompt": prompt, "history": memory_conversation.load_memory_variables({})["history"]}
         )
-        memory.save_context({"input": prompt}, {"output": response})
+        memory_conversation.save_context({"input": prompt}, {"output": response})
+        memory_context.save_context({"input": prompt}, {"output": response})
 
-        character_chain.invoke({"history": memory.load_memory_variables({})["history"]})
+        character_chain.invoke({"history": memory_conversation.load_memory_variables({})["history"]})
     else:
         st.session_state["step"] = "game"
+
+        history = memory_conversation.load_memory_variables({})["history"]
+        extra_content = memory_context.load_memory_variables({"prompt": prompt})["history"]
+
+        for i in range(len(history), 2):
+            human_input = history[i].content
+            ai_output = history[i + 1].content
+            history_formatted = f"input: {human_input}\noutput: {ai_output}"
+            extra_content = extra_content.replace(history_formatted, "")
+
         response = game_chain.invoke(
             {
                 "prompt": prompt,
@@ -210,21 +219,20 @@ if prompt := st.chat_input():
                 "quest": st.session_state["quest"],
                 "state": st.session_state["state"],
                 "character": st.session_state["player_info"],
-                "history": memory.load_memory_variables({})["history"][
-                    st.session_state["player_creation_end_idx"] - 1 :
-                ],
+                "history": memory_conversation.load_memory_variables({})["history"],
+                "extra_context": extra_content,
             }
         )
-        memory.save_context({"input": prompt}, {"output": response})
+        memory_conversation.save_context({"input": prompt}, {"output": response})
+        memory_context.save_context({"input": prompt}, {"output": response})
         state_chain.invoke(
             {
                 "story": st.session_state["story"],
                 "quest": st.session_state["quest"],
                 "state": st.session_state["state"],
                 "character": st.session_state["player_info"],
-                "history": memory.load_memory_variables({})["history"][
-                    st.session_state["player_creation_end_idx"] - 1 :
-                ],
+                "history": memory_conversation.load_memory_variables({})["history"],
+                "extra_context": extra_content,
             }
         )
 

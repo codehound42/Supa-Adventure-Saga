@@ -1,5 +1,9 @@
 from langchain.pydantic_v1 import BaseModel, Field
-
+import os
+import os
+from supabase.client import Client, create_client
+from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain.vectorstores.supabase import SupabaseVectorStore
 
 character_system_msg = """You are a dungeon master for a game of dungeons and dragons.
 
@@ -11,19 +15,6 @@ The relevant information is:
 - Character's race (or species)
 - Character's class
 - Character's alignment"""
-
-
-quest_system_msg = """You are a dungeon master for a game of dungeons and dragons.
-
-Your job is evaluate whether the current quest has been completed based on the current state and past history.
-
-The current quest is:
-
-{quest}
-
-The current state is:
-
-{state}"""
 
 
 gameplay_system_msg = """You are a dungeon master for a game of dungeons and dragons.
@@ -42,7 +33,12 @@ The current quest is:
 
 A summary of the game state is here:
 
-{state}"""
+{state}
+
+Relevant pieces of previous conversation (if applicable):
+{extra_context}
+
+(You do not need to use these pieces of information if not relevant)"""
 
 
 class StateNotebook(BaseModel):
@@ -60,3 +56,17 @@ class CharacterNotebook(BaseModel):
     class_: str = Field(description="Information about the class of the player that you will remember over time ")
     alignment: str = Field(description="Information about the alignment of the player that you will remember over time")
     completed: bool = Field(description="Whether the character creation is completed")
+
+
+def get_vectorstore():
+    supabase_url = os.environ.get("SUPABASE_URL")
+    supabase_key = os.environ.get("SUPABASE_SERVICE_KEY")
+    supabase: Client = create_client(supabase_url, supabase_key)
+
+    vectorstore = SupabaseVectorStore(
+        embedding=OpenAIEmbeddings(),
+        client=supabase,
+        table_name="documents_supa_adventure_saga",
+        query_name="match_documents_supa_adventure_saga",
+    )
+    return vectorstore
