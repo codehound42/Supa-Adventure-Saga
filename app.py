@@ -142,6 +142,13 @@ def init_sample_character():
     st.session_state["class_"] = "Cleric"
     st.session_state["alignment"] = "Neutral"
     st.session_state["completed"] = False
+    st.session_state["is_quest_completed"] = False
+    st.session_state["state"] = ""
+    st.session_state[
+        "story"
+    ] = "In the small village of Eldenwood, you find yourself in the cozy Drunken Dragon Inn. A mysterious figure offers you a quest to investigate the haunted ruins of Graystone Castle, believed to be the source of recent villager disappearances. With a map and promise of gold, you set out to uncover the secrets lurking in the shadowy depths of the castle."
+    st.session_state["quest"] = "Uncover the secrets lurking in the shadowy depths of the castle."
+    st.write(st.session_state)
 
 
 if "messages" not in st.session_state:
@@ -161,16 +168,16 @@ if "state" not in st.session_state:
     st.session_state[
         "story"
     ] = "In the small village of Eldenwood, you find yourself in the cozy Drunken Dragon Inn. A mysterious figure offers you a quest to investigate the haunted ruins of Graystone Castle, believed to be the source of recent villager disappearances. With a map and promise of gold, you set out to uncover the secrets lurking in the shadowy depths of the castle."
-    st.session_state["state"] = ""
     st.session_state["quest"] = "Uncover the secrets lurking in the shadowy depths of the castle."
+    st.session_state["state"] = ""
     st.session_state["is_quest_completed"] = False
     st.session_state["completed"] = False
     st.session_state["name"] = ""
     st.session_state["race"] = ""
     st.session_state["class_"] = ""
     st.session_state["alignment"] = ""
+    st.session_state["story"] = ""
 
-st.title("Supa Adventure Saga")
 st.image("front_image.png")
 
 if len(msgs.messages) == 0:
