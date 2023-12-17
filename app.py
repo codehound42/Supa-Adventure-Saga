@@ -174,7 +174,6 @@ if "state" not in st.session_state:
     st.session_state["race"] = ""
     st.session_state["class_"] = ""
     st.session_state["alignment"] = ""
-    st.session_state["story"] = ""
 
 st.image("front_image.png")
 
