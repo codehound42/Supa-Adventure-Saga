@@ -151,9 +151,7 @@ def init_sample_character():
     st.write(st.session_state)
 
 
-if "messages" not in st.session_state:
-    init_sample_character()
-
+# init_sample_character()
 
 msgs = StreamlitChatMessageHistory(key="messages")
 
@@ -181,7 +179,7 @@ if "state" not in st.session_state:
 st.image("front_image.png")
 
 if len(msgs.messages) == 0:
-    msgs.add_ai_message("Hello! Are you ready to create your character for the game of Dungeons and Dragons?")
+    msgs.add_ai_message("Hello and welcome to Supa Adventure Saga! A roleplaying game with me, GPT, as your DM. Let's start by making your character!")
 
 for msg in msgs.messages:
     st.chat_message(msg.type).write(msg.content)
